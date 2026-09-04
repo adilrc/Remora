@@ -23,6 +23,11 @@ configs:
   Debug: debug
   Release: release
 
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.9.6
+
 # Project-level settings Xcode checks in “Update to recommended settings”; the target inherits
 # the same values from the xcconfig files.
 settings:
@@ -49,6 +54,8 @@ targets:
         excludes:
           - Assets.xcassets
           - "*.icon"
+    dependencies:
+      - package: Sparkle
     settings:
       base:
         INFOPLIST_FILE: resources/Info.plist

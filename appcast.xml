@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Remora</title>
+        <item>
+            <title>0.1.0</title>
+            <pubDate>Fri, 04 Sep 2026 10:31:37 +0200</pubDate>
+            <link>https://github.com/adilrc/Remora/releases/tag/v0.1.0</link>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>0.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/adilrc/Remora/releases/download/v0.1.0/Remora-0.1.0.zip" length="2512165" type="application/octet-stream"/>
+        </item>
+    </channel>
+</rss>

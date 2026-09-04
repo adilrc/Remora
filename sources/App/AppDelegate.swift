@@ -3,6 +3,7 @@ internal import AppKit
 @MainActor
 final class AppDelegate: NSObject {
   private let overlayController = OverlayController()
+  private let updateController = UpdateController()
   private var statusItemController: StatusItemController?
 }
 
@@ -19,7 +20,7 @@ extension AppDelegate: NSApplicationDelegate {
     // Metric order briefly lived in UserDefaults before moving to the configuration file.
     UserDefaults.standard.removeObject(forKey: "hud.metricOrder")
 
-    let statusItem = StatusItemController(overlay: overlayController)
+    let statusItem = StatusItemController(overlay: overlayController, updates: updateController)
     statusItemController = statusItem
     statusItem.start()
     overlayController.start()

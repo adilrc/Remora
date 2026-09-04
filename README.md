@@ -65,7 +65,7 @@ brew install --cask adilrc/tap/remora
 
 Or download the latest `Remora-<version>.zip` from [Releases](https://github.com/adilrc/Remora/releases/latest), unzip it, and move `Remora.app` to your Applications folder. Builds are signed and notarized, so macOS opens them without a warning.
 
-Remora needs macOS 14 or later.
+Remora needs macOS 14 or later. It checks for new versions once a day and offers to install them; the "Check for Updates…" item in its menu does the same on demand.
 
 ## Permissions
 

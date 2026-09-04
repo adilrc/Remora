@@ -3,10 +3,12 @@ internal import AppKit
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
   private let overlay: OverlayController
+  private let updates: UpdateController
   private var statusItem: NSStatusItem?
 
-  init(overlay: OverlayController) {
+  init(overlay: OverlayController, updates: UpdateController) {
     self.overlay = overlay
+    self.updates = updates
   }
 
   func start() {
@@ -67,6 +69,7 @@ private extension StatusItemController {
     menu.addItem(.separator())
     menu.addItem(makeItem(title: "Settings…", action: #selector(openSettings(_:)), keyEquivalent: ","))
     menu.addItem(makeItem(title: "About \(AppInfo.name)", action: #selector(showAbout(_:))))
+    menu.addItem(updates.makeMenuItem())
     menu.addItem(.separator())
     menu.addItem(makeItem(title: "Quit \(AppInfo.name)", action: #selector(quit(_:)), keyEquivalent: "q"))
   }

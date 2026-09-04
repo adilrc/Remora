@@ -7,6 +7,7 @@
 #   NOTARY_KEY_ID                    App Store Connect API key ID
 #   NOTARY_ISSUER_ID                 App Store Connect API issuer ID
 #   NOTARY_KEY_BASE64                The API private key (.p8), base64-encoded
+#   SPARKLE_PRIVATE_KEY              Sparkle EdDSA private key, as exported by `generate_keys -x`
 name: Release
 
 on:
@@ -52,12 +53,15 @@ jobs:
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
           NOTARY_KEY_BASE64: ${{ secrets.NOTARY_KEY_BASE64 }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           export NOTARY_KEY_PATH="$RUNNER_TEMP/AuthKey.p8"
+          export SPARKLE_PRIVATE_KEY_FILE="$RUNNER_TEMP/sparkle_ed25519"
           echo "$NOTARY_KEY_BASE64" | base64 --decode > "$NOTARY_KEY_PATH"
+          printf '%s' "$SPARKLE_PRIVATE_KEY" > "$SPARKLE_PRIVATE_KEY_FILE"
           scripts/release.sh "${GITHUB_REF_NAME#v}" "$GITHUB_RUN_NUMBER"
-          rm "$NOTARY_KEY_PATH"
+          rm "$NOTARY_KEY_PATH" "$SPARKLE_PRIVATE_KEY_FILE"
 
       - name: Publish GitHub Release
         env:
@@ -70,6 +74,21 @@ jobs:
             --generate-notes \
             dist/Remora-"$VERSION".zip \
             dist/Remora-"$VERSION".zip.sha256
+
+      - name: Publish appcast
+        # After the release, so the download URL in the feed resolves the moment the feed updates.
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp appcast.xml "$RUNNER_TEMP/appcast.xml"
+          git checkout -- appcast.xml
+          git fetch origin main
+          git checkout -B main origin/main
+          cp "$RUNNER_TEMP/appcast.xml" appcast.xml
+          git add appcast.xml
+          git commit -m "Add ${GITHUB_REF_NAME#v} to appcast" || echo "appcast unchanged"
+          git push origin main
 
       - name: Remove keychain
         if: always()
