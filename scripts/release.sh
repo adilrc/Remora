@@ -68,6 +68,6 @@ spctl --assess --type exec --verbose=2 "$APP"
 echo "==> Packaging"
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
-shasum -a 256 "$ZIP" | tee "$ZIP.sha256"
+(cd "$DIST" && shasum -a 256 "$(basename "$ZIP")" | tee "$(basename "$ZIP").sha256")
 
 echo "==> Done: $ZIP"

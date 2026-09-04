@@ -57,7 +57,13 @@ Remora is named after the fish that hitches a ride on bigger fish. It attaches a
 
 ## Install
 
-Download the latest `Remora-<version>.zip` from [Releases](https://github.com/adilrc/Remora/releases/latest), unzip it, and move `Remora.app` to your Applications folder. Builds are signed and notarized, so macOS opens them without a warning.
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask adilrc/tap/remora
+```
+
+Or download the latest `Remora-<version>.zip` from [Releases](https://github.com/adilrc/Remora/releases/latest), unzip it, and move `Remora.app` to your Applications folder. Builds are signed and notarized, so macOS opens them without a warning.
 
 Remora needs macOS 14 or later.
 
