@@ -66,6 +66,7 @@ final class AppSettings {
     case showsTwelveHourPower
     case showsLaunchTimer
     case showsTimeToInteractive
+    case showsVisuallyComplete
     case thresholds
     case refreshInterval
     case toggleShortcut
@@ -207,6 +208,16 @@ final class AppSettings {
     }
   }
 
+  var showsVisuallyComplete: Bool {
+    didSet {
+      settingDidChange(
+        .showsVisuallyComplete,
+        key: "show-visually-complete",
+        value: Self.text(showsVisuallyComplete)
+      )
+    }
+  }
+
   /// Color thresholds per metric. Every metric has an entry; most are `.none` by default.
   var thresholds: [HUDMetric: MetricThresholds] {
     didSet {
@@ -241,6 +252,7 @@ final class AppSettings {
       || showsTwelveHourPower
       || showsLaunchTimer
       || showsTimeToInteractive
+      || showsVisuallyComplete
   }
 
   var configurationURL: URL { configuration.url }
@@ -285,6 +297,7 @@ final class AppSettings {
     showsTwelveHourPower = initial.showsTwelveHourPower
     showsLaunchTimer = initial.showsLaunchTimer
     showsTimeToInteractive = initial.showsTimeToInteractive
+    showsVisuallyComplete = initial.showsVisuallyComplete
     thresholds = initial.thresholds
     refreshInterval = initial.refreshInterval
     toggleShortcut = initial.toggleShortcut
@@ -351,6 +364,7 @@ private extension AppSettings {
     showsTwelveHourPower = values.showsTwelveHourPower
     showsLaunchTimer = values.showsLaunchTimer
     showsTimeToInteractive = values.showsTimeToInteractive
+    showsVisuallyComplete = values.showsVisuallyComplete
     thresholds = values.thresholds
     refreshInterval = values.refreshInterval
     toggleShortcut = values.toggleShortcut
@@ -392,6 +406,7 @@ private extension AppSettings {
       showsTwelveHourPower: showsTwelveHourPower,
       showsLaunchTimer: showsLaunchTimer,
       showsTimeToInteractive: showsTimeToInteractive,
+      showsVisuallyComplete: showsVisuallyComplete,
       thresholds: thresholds,
       refreshInterval: refreshInterval,
       toggleShortcut: toggleShortcut
@@ -421,6 +436,8 @@ private extension AppSettings {
     result.showsLaunchTimer = configuredBool("show-launch-timer", in: values) ?? result.showsLaunchTimer
     result.showsTimeToInteractive = configuredBool("show-time-to-interactive", in: values)
       ?? result.showsTimeToInteractive
+    result.showsVisuallyComplete = configuredBool("show-visually-complete", in: values)
+      ?? result.showsVisuallyComplete
     for metric in HUDMetric.allCases {
       result.thresholds[metric] = configuredThresholds(
         for: metric,
@@ -520,6 +537,7 @@ private extension AppSettings {
     var showsTwelveHourPower: Bool
     var showsLaunchTimer: Bool
     var showsTimeToInteractive: Bool
+    var showsVisuallyComplete: Bool
     var thresholds: [HUDMetric: MetricThresholds]
     var refreshInterval: RefreshInterval
     var toggleShortcut: KeyboardShortcut?
@@ -536,6 +554,7 @@ private extension AppSettings {
       showsTwelveHourPower: true,
       showsLaunchTimer: true,
       showsTimeToInteractive: true,
+      showsVisuallyComplete: false,
       thresholds: Dictionary(uniqueKeysWithValues: HUDMetric.allCases.map { ($0, MetricThresholds.defaults(for: $0)) }),
       refreshInterval: .fiveSeconds,
       toggleShortcut: .defaultToggle
@@ -560,6 +579,7 @@ private extension AppSettings {
         "show-twelve-hour-power": AppSettings.text(showsTwelveHourPower),
         "show-launch-timer": AppSettings.text(showsLaunchTimer),
         "show-time-to-interactive": AppSettings.text(showsTimeToInteractive),
+        "show-visually-complete": AppSettings.text(showsVisuallyComplete),
         "refresh-interval": String(refreshInterval.rawValue),
         "toggle-shortcut": toggleShortcut?.configurationString ?? "none",
       ]) { _, new in new }

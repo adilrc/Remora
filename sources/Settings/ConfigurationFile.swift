@@ -14,6 +14,7 @@ final class ConfigurationFile {
     "show-twelve-hour-power",
     "show-launch-timer",
     "show-time-to-interactive",
+    "show-visually-complete",
     "cpu-orange-threshold",
     "cpu-red-threshold",
     "memory-orange-threshold",
@@ -26,6 +27,8 @@ final class ConfigurationFile {
     "launch-timer-red-threshold",
     "time-to-interactive-orange-threshold",
     "time-to-interactive-red-threshold",
+    "visually-complete-orange-threshold",
+    "visually-complete-red-threshold",
     "refresh-interval",
     "toggle-shortcut",
   ]

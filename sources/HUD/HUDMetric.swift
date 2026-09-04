@@ -7,6 +7,7 @@ enum HUDMetric: String, CaseIterable, Sendable {
   case twelveHourPower
   case launchTimer
   case timeToInteractive
+  case visuallyComplete
 }
 
 extension HUDMetric {
@@ -19,6 +20,7 @@ extension HUDMetric {
     case .twelveHourPower: "twelve-hour-power"
     case .launchTimer: "launch-timer"
     case .timeToInteractive: "time-to-interactive"
+    case .visuallyComplete: "visually-complete"
     }
   }
 
@@ -38,6 +40,7 @@ extension HUDMetric {
     case .twelveHourPower: "12 hr Power"
     case .launchTimer: "Launch Timer"
     case .timeToInteractive: "Time to Interactive"
+    case .visuallyComplete: "Visually Complete"
     }
   }
 
@@ -50,6 +53,7 @@ extension HUDMetric {
     case .twelveHourPower: "12H PWR"
     case .launchTimer: "LAUNCH"
     case .timeToInteractive: "TTI"
+    case .visuallyComplete: "VISUAL"
     }
   }
 
@@ -73,6 +77,9 @@ extension HUDMetric {
     case .timeToInteractive:
       "Time from process launch until the app exposes an enabled, keyboard-focused text field through Accessibility. "
       + "Apps with incomplete Accessibility support stay unavailable."
+    case .visuallyComplete:
+      "Time from process launch until the window's last meaningful rendered frame after Time to Interactive, "
+      + "followed by 750 ms of visual stability."
     }
   }
 
@@ -82,7 +89,7 @@ extension HUDMetric {
     case .cpu: "100.0%"
     case .memory: "100.0 MB"
     case .energyImpact, .twelveHourPower: "100.0"
-    case .launchTimer, .timeToInteractive: "10.00s"
+    case .launchTimer, .timeToInteractive, .visuallyComplete: "10.00s"
     }
   }
 
@@ -92,7 +99,7 @@ extension HUDMetric {
     case .cpu: "%"
     case .memory: "MB"
     case .energyImpact, .twelveHourPower: ""
-    case .launchTimer, .timeToInteractive: "s"
+    case .launchTimer, .timeToInteractive, .visuallyComplete: "s"
     }
   }
 }

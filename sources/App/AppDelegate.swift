@@ -26,7 +26,10 @@ extension AppDelegate: NSApplicationDelegate {
     overlayController.start()
 
     // `-ShowOnboarding YES` forces the onboarding window, which is handy while working on it.
-    if !AccessibilityPermission.isGranted || UserDefaults.standard.bool(forKey: "ShowOnboarding") {
+    // The resume flag is left by the onboarding itself when it relaunches for Screen Recording.
+    let resumeOnboarding = UserDefaults.standard.bool(forKey: OnboardingWindowController.resumeAfterRelaunchKey)
+    UserDefaults.standard.removeObject(forKey: OnboardingWindowController.resumeAfterRelaunchKey)
+    if !AccessibilityPermission.isGranted || resumeOnboarding || UserDefaults.standard.bool(forKey: "ShowOnboarding") {
       overlayController.showOnboarding()
     } else if !UserDefaults.standard.bool(forKey: "didOpenSettingsOnce") {
       UserDefaults.standard.set(true, forKey: "didOpenSettingsOnce")

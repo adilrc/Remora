@@ -27,6 +27,7 @@ final class OverlayController {
   func start() {
     settings.startMonitoring()
     sampler.refreshInterval = settings.refreshInterval.seconds
+    launchTimer.setVisuallyCompleteEnabled(settings.showsVisuallyComplete)
     launchTimer.start()
 
     hudWindow.onHideRequested = { [weak self] in self?.hideHUD() }
@@ -143,6 +144,12 @@ private extension OverlayController {
       sampler.refreshInterval = settings.refreshInterval.seconds
       scheduleMetricsTimer()
 
+    case .showsVisuallyComplete:
+      launchTimer.setVisuallyCompleteEnabled(settings.showsVisuallyComplete)
+      if settings.showsVisuallyComplete {
+        ScreenRecordingPermission.promptIfNeeded()
+      }
+
     case .followsActiveWindow, .excludedBundleIdentifiers:
       applyTrackingSettings()
       tracker.refresh()
@@ -218,6 +225,7 @@ private extension OverlayController {
     case .twelveHourPower: settings.showsTwelveHourPower.toggle()
     case .launchTimer: settings.showsLaunchTimer.toggle()
     case .timeToInteractive: settings.showsTimeToInteractive.toggle()
+    case .visuallyComplete: settings.showsVisuallyComplete.toggle()
     }
   }
 
@@ -229,6 +237,7 @@ private extension OverlayController {
     case .twelveHourPower: settings.showsTwelveHourPower
     case .launchTimer: settings.showsLaunchTimer
     case .timeToInteractive: settings.showsTimeToInteractive
+    case .visuallyComplete: settings.showsVisuallyComplete
     }
   }
 
@@ -253,11 +262,14 @@ private extension OverlayController {
       metrics: latestMetrics,
       launchDuration: launchTimer.duration(for: target.pid),
       timeToInteractiveDuration: launchTimer.timeToInteractiveDuration(for: target.pid),
+      visuallyCompleteDuration: launchTimer.visuallyCompleteDuration(for: target.pid),
       visibleMetrics: settings.metricOrder.filter(isShown),
       thresholds: settings.thresholds,
       isDetached: settings.isDetached,
       followsActiveWindow: settings.followsActiveWindow,
-      missingAccessibility: !AccessibilityPermission.isGranted
+      missingAccessibility: !AccessibilityPermission.isGranted,
+      missingScreenRecording: settings.showsVisuallyComplete
+        && !ScreenRecordingPermission.isGranted
     )
 
     if snapshot != lastSnapshot {

@@ -37,6 +37,8 @@ final class ApplicationLaunchTimer {
   }
 
   private let maximumTrackingDuration: TimeInterval = 60
+  private let visuallyCompleteTimer = VisuallyCompleteTimer()
+  private var visuallyCompleteEnabled = false
   private var pendingLaunches: [pid_t: PendingLaunch] = [:]
   private var pendingInteractiveLaunches: [pid_t: PendingLaunch] = [:]
   private var launchDurations: [pid_t: TimeInterval] = [:]
@@ -132,17 +134,23 @@ final class ApplicationLaunchTimer {
     pendingInteractiveLaunches.removeAll()
     launchDurations.removeAll()
     timeToInteractiveDurations.removeAll()
+    visuallyCompleteTimer.stop()
   }
 
   func refresh(now: Date = Date()) {
     refreshLaunchDurations(now: now)
     refreshTimeToInteractiveDurations(now: now)
+    if visuallyCompleteEnabled {
+      visuallyCompleteTimer.refresh(now: now)
+    }
     updatePolling()
   }
 
   /// Runs a 10 Hz poll only while there is a pending launch, so an idle app costs nothing.
   private func updatePolling() {
-    let isTracking = !pendingLaunches.isEmpty || !pendingInteractiveLaunches.isEmpty
+    let isTracking = !pendingLaunches.isEmpty
+      || !pendingInteractiveLaunches.isEmpty
+      || visuallyCompleteTimer.isTracking
     if isTracking, pollTimer == nil {
       let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
         Task { @MainActor in
@@ -167,7 +175,18 @@ final class ApplicationLaunchTimer {
     timeToInteractiveDurations[pid]
   }
 
+  func visuallyCompleteDuration(for pid: pid_t) -> TimeInterval? {
+    visuallyCompleteTimer.duration(for: pid)
+  }
 
+  func setVisuallyCompleteEnabled(_ isEnabled: Bool) {
+    guard visuallyCompleteEnabled != isEnabled else { return }
+    visuallyCompleteEnabled = isEnabled
+    if !isEnabled {
+      visuallyCompleteTimer.stop()
+    }
+    updatePolling()
+  }
 }
 
 // MARK: - Private functionality
@@ -192,7 +211,7 @@ private extension ApplicationLaunchTimer {
   }
 
   func refreshTimeToInteractiveDurations(now: Date) {
-    var completedLaunches: [(pid: pid_t, duration: TimeInterval)] = []
+    var completedLaunches: [(pid: pid_t, duration: TimeInterval, interactiveAt: Date)] = []
     var expiredPIDs: [pid_t] = []
     for (pid, launch) in pendingInteractiveLaunches {
       let elapsed = now.timeIntervalSince(launch.startedAt)
@@ -205,7 +224,7 @@ private extension ApplicationLaunchTimer {
       guard CGWindowList.primaryWindowFrame(pid: pid) != nil,
             hasInteractiveAccessibilityElement(pid: pid, now: now)
       else { continue }
-      completedLaunches.append((pid, max(elapsed, 0)))
+      completedLaunches.append((pid, max(elapsed, 0), now))
     }
 
     for pid in expiredPIDs {
@@ -214,6 +233,9 @@ private extension ApplicationLaunchTimer {
     }
     for launch in completedLaunches {
       timeToInteractiveDurations[launch.pid] = launch.duration
+      if visuallyCompleteEnabled {
+        visuallyCompleteTimer.becameInteractive(pid: launch.pid, at: launch.interactiveAt)
+      }
       pendingInteractiveLaunches.removeValue(forKey: launch.pid)
       tearDownAccessibilityObserver(for: launch.pid)
     }
@@ -227,6 +249,9 @@ private extension ApplicationLaunchTimer {
     pendingInteractiveLaunches[pid] = launch
     launchDurations.removeValue(forKey: pid)
     timeToInteractiveDurations.removeValue(forKey: pid)
+    if visuallyCompleteEnabled {
+      visuallyCompleteTimer.begin(pid: pid, startedAt: startedAt)
+    }
     refresh()
   }
 
@@ -246,6 +271,9 @@ private extension ApplicationLaunchTimer {
       launch.isElectron = launch.isElectron || isElectron
       pendingInteractiveLaunches[pid] = launch
     }
+    if visuallyCompleteEnabled {
+      visuallyCompleteTimer.updateStartDate(startedAt, for: pid)
+    }
     refresh()
   }
 
@@ -254,6 +282,7 @@ private extension ApplicationLaunchTimer {
     pendingInteractiveLaunches.removeValue(forKey: pid)
     launchDurations.removeValue(forKey: pid)
     timeToInteractiveDurations.removeValue(forKey: pid)
+    visuallyCompleteTimer.remove(pid: pid)
     tearDownAccessibilityObserver(for: pid)
   }
 

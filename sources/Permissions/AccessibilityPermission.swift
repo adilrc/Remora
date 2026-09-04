@@ -16,6 +16,17 @@ enum AccessibilityPermission {
     return "Accessibility"
   }
 
+  /// Button and menu title for granting the permission.
+  ///
+  /// The macOS 27 pane name already ends in "Access", so appending the word would double it.
+  static var grantActionTitle: String {
+    if #available(macOS 27, *) {
+      return "Grant \(displayName)"
+    }
+
+    return "Grant \(displayName) Access"
+  }
+
   static var isGranted: Bool {
     AXIsProcessTrusted()
   }

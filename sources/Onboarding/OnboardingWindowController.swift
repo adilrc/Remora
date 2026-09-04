@@ -2,14 +2,20 @@ internal import AppKit
 
 /// Walks the user through granting the Accessibility permission. Clicking “Grant” opens System
 /// Settings, slides this window next to it, and turns the app icon into a drag source so the app
-/// can be dropped straight into the permission list.
+/// can be dropped straight into the permission list. A checkbox also offers Visually Complete;
+/// ticking it turns the metric on and runs the same flow for Screen Recording, which macOS only
+/// applies after a relaunch.
 @MainActor
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
+  /// Set before relaunching for Screen Recording so the next launch reopens this window.
+  static let resumeAfterRelaunchKey = "onboarding.resumeAfterRelaunch"
+
   private static let systemSettingsBundleIdentifier = "com.apple.systempreferences"
 
   private var window: NSWindow?
   private var onboardingView: OnboardingView?
   private var permissionTimer: Timer?
+  private var screenRecordingTimer: Timer?
   private var settingsWindowTimer: Timer?
   private var settingsWindowSearchStartedAt: Date?
 
@@ -29,6 +35,8 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
       window.center()
       onboardingView.stage = AccessibilityPermission.isGranted ? .granted(playSound: false) : .intro
     }
+    onboardingView.isVisuallyCompleteEnabled = AppSettings.shared.showsVisuallyComplete
+    refreshVisuallyCompleteCaption()
     AppActivation.windowWillShow(window)
     window.makeKeyAndOrderFront(nil)
     startPermissionPolling()
@@ -51,6 +59,10 @@ private extension OnboardingWindowController {
     let view = OnboardingView()
     view.onGrant = { [weak self] in self?.grant() }
     view.onDone = { [weak self] in self?.window?.close() }
+    view.onVisuallyCompleteChanged = { [weak self] isEnabled in
+      self?.setVisuallyCompleteEnabled(isEnabled)
+    }
+    view.onRelaunch = { [weak self] in self?.relaunch() }
     onboardingView = view
 
     let window = NSWindow(
@@ -71,10 +83,60 @@ private extension OnboardingWindowController {
   }
 
   func grant() {
-    guard let window else { return }
     AccessibilityPermission.openSystemSettings()
-    window.level = .floating
     onboardingView?.stage = .dragging
+    slideNextToSystemSettings()
+  }
+
+  /// Turning the metric on triggers the system prompt through the settings observer. That prompt
+  /// only ever appears once per app, so System Settings is opened as well to cover repeat attempts.
+  func setVisuallyCompleteEnabled(_ isEnabled: Bool) {
+    AppSettings.shared.showsVisuallyComplete = isEnabled
+    refreshVisuallyCompleteCaption()
+    guard isEnabled, !ScreenRecordingPermission.isGranted else { return }
+    ScreenRecordingPermission.openSystemSettings()
+    slideNextToSystemSettings()
+  }
+
+  /// Matches the caption to the setting and the permission, and polls while a grant is awaited.
+  func refreshVisuallyCompleteCaption() {
+    guard AppSettings.shared.showsVisuallyComplete else {
+      stopScreenRecordingPolling()
+      onboardingView?.setVisuallyCompleteCaption(.initial)
+      return
+    }
+    if ScreenRecordingPermission.isGranted {
+      stopScreenRecordingPolling()
+      onboardingView?.setVisuallyCompleteCaption(.granted)
+    } else {
+      onboardingView?.setVisuallyCompleteCaption(.waiting)
+      startScreenRecordingPolling()
+    }
+  }
+
+  /// Screen Recording only takes effect in a fresh process. A shell waits for this one to exit,
+  /// then reopens the bundle; the defaults flag brings this window straight back.
+  func relaunch() {
+    UserDefaults.standard.set(true, forKey: Self.resumeAfterRelaunchKey)
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/bin/sh")
+    process.arguments = [
+      "-c",
+      "while kill -0 \(ProcessInfo.processInfo.processIdentifier) 2>/dev/null; do sleep 0.1; done; open \"$0\"",
+      Bundle.main.bundlePath,
+    ]
+    do {
+      try process.run()
+    } catch {
+      UserDefaults.standard.removeObject(forKey: Self.resumeAfterRelaunchKey)
+      return
+    }
+    NSApp.terminate(nil)
+  }
+
+  func slideNextToSystemSettings() {
+    guard let window else { return }
+    window.level = .floating
     settingsWindowSearchStartedAt = Date()
     settingsWindowTimer?.invalidate()
     settingsWindowTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
@@ -86,6 +148,7 @@ private extension OnboardingWindowController {
     guard let startedAt = settingsWindowSearchStartedAt, Date().timeIntervalSince(startedAt) < 6 else {
       settingsWindowTimer?.invalidate()
       settingsWindowTimer = nil
+      reactivate()
       return
     }
     guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: Self.systemSettingsBundleIdentifier).first,
@@ -95,6 +158,14 @@ private extension OnboardingWindowController {
     settingsWindowTimer?.invalidate()
     settingsWindowTimer = nil
     moveWindow(nextTo: ScreenGeometry.cocoaRect(fromQuartz: quartzFrame))
+    reactivate()
+  }
+
+  /// Opening System Settings hands it focus; take it back so the icon is ready to drag.
+  func reactivate() {
+    guard let window, window.isVisible else { return }
+    NSApp.activate(ignoringOtherApps: true)
+    window.makeKeyAndOrderFront(nil)
   }
 
   func moveWindow(nextTo settingsFrame: CGRect) {
@@ -133,10 +204,33 @@ private extension OnboardingWindowController {
 
   func checkPermission() {
     guard AccessibilityPermission.isGranted else { return }
-    stopTimers()
+    permissionTimer?.invalidate()
+    permissionTimer = nil
+    settingsWindowTimer?.invalidate()
+    settingsWindowTimer = nil
     onboardingView?.stage = .granted(playSound: true)
     NSApp.activate(ignoringOtherApps: true)
     window?.makeKeyAndOrderFront(nil)
+  }
+
+  func startScreenRecordingPolling() {
+    guard screenRecordingTimer == nil else { return }
+    screenRecordingTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+      Task { @MainActor in self?.checkScreenRecordingPermission() }
+    }
+  }
+
+  func checkScreenRecordingPermission() {
+    guard ScreenRecordingPermission.isGranted else { return }
+    stopScreenRecordingPolling()
+    onboardingView?.setVisuallyCompleteCaption(.grantedPendingRelaunch)
+    NSSound(named: "Glass")?.play()
+    reactivate()
+  }
+
+  func stopScreenRecordingPolling() {
+    screenRecordingTimer?.invalidate()
+    screenRecordingTimer = nil
   }
 
   func stopTimers() {
@@ -144,6 +238,7 @@ private extension OnboardingWindowController {
     permissionTimer = nil
     settingsWindowTimer?.invalidate()
     settingsWindowTimer = nil
+    stopScreenRecordingPolling()
   }
 }
 
@@ -155,11 +250,50 @@ private final class OnboardingView: NSView {
     case granted(playSound: Bool)
   }
 
-  static let size = NSSize(width: 380, height: 400)
+  enum VisuallyCompleteCaption {
+    case initial
+    case waiting
+    case grantedPendingRelaunch
+    case granted
+  }
+
+  static let size = NSSize(width: 380, height: 470)
   static let largeIconSize: CGFloat = 140
 
   var onGrant: (() -> Void)?
   var onDone: (() -> Void)?
+  var onVisuallyCompleteChanged: ((Bool) -> Void)?
+  var onRelaunch: (() -> Void)?
+
+  var isVisuallyCompleteEnabled: Bool {
+    get { visuallyCompleteCheckbox.state == .on }
+    set { visuallyCompleteCheckbox.state = newValue ? .on : .off }
+  }
+
+  func setVisuallyCompleteCaption(_ caption: VisuallyCompleteCaption) {
+    let appName = AppInfo.name
+    switch caption {
+    case .initial:
+      visuallyCompleteCaption.stringValue = "Watches the window render after launch. "
+        + "Needs Screen Recording."
+      visuallyCompleteCaption.textColor = .secondaryLabelColor
+      setRelaunchButtonVisible(false)
+    case .waiting:
+      visuallyCompleteCaption.stringValue = "Turn on \(appName) in the Screen Recording list, "
+        + "then relaunch it."
+      visuallyCompleteCaption.textColor = .secondaryLabelColor
+      setRelaunchButtonVisible(true)
+    case .grantedPendingRelaunch:
+      visuallyCompleteCaption.stringValue = "Screen Recording is granted. "
+        + "Relaunch \(appName) to start measuring."
+      visuallyCompleteCaption.textColor = .systemGreen
+      setRelaunchButtonVisible(true)
+    case .granted:
+      visuallyCompleteCaption.stringValue = "Screen Recording is granted."
+      visuallyCompleteCaption.textColor = .systemGreen
+      setRelaunchButtonVisible(false)
+    }
+  }
 
   var stage: Stage = .intro {
     didSet { apply(stage, animated: true) }
@@ -170,6 +304,10 @@ private final class OnboardingView: NSView {
   private let checkmarkView = CheckmarkView()
   private let titleLabel = NSTextField(wrappingLabelWithString: "")
   private let bodyLabel = NSTextField(wrappingLabelWithString: "")
+  private let visuallyCompleteCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+  private let visuallyCompleteCaption = NSTextField(wrappingLabelWithString: "")
+  private let relaunchButton = NSButton(title: "", target: nil, action: nil)
+  private let visuallyCompleteStack = NSStackView()
   private let primaryButton = NSButton(title: "", target: nil, action: nil)
   private let secondaryButton = NSButton(title: "", target: nil, action: nil)
   private var iconSizeConstraint: NSLayoutConstraint?
@@ -224,6 +362,32 @@ private extension OnboardingView {
     bodyLabel.preferredMaxLayoutWidth = 300
     bodyLabel.widthAnchor.constraint(equalToConstant: 300).isActive = true
 
+    visuallyCompleteCheckbox.title = "Also measure Visually Complete"
+    visuallyCompleteCheckbox.target = self
+    visuallyCompleteCheckbox.action = #selector(visuallyCompleteAction)
+
+    visuallyCompleteCaption.font = .systemFont(ofSize: 11)
+    visuallyCompleteCaption.textColor = .secondaryLabelColor
+    visuallyCompleteCaption.preferredMaxLayoutWidth = 282
+
+    relaunchButton.title = "Relaunch \(AppInfo.name)"
+    relaunchButton.bezelStyle = .rounded
+    relaunchButton.controlSize = .small
+    relaunchButton.target = self
+    relaunchButton.action = #selector(relaunchAction)
+
+    visuallyCompleteStack.setViews([visuallyCompleteCheckbox, visuallyCompleteCaption, relaunchButton], in: .top)
+    visuallyCompleteStack.orientation = .vertical
+    visuallyCompleteStack.alignment = .leading
+    visuallyCompleteStack.spacing = 2
+    visuallyCompleteStack.setCustomSpacing(6, after: visuallyCompleteCaption)
+    visuallyCompleteStack.widthAnchor.constraint(equalToConstant: 300).isActive = true
+    NSLayoutConstraint.activate([
+      visuallyCompleteCaption.leadingAnchor.constraint(equalTo: visuallyCompleteStack.leadingAnchor, constant: 18),
+      relaunchButton.leadingAnchor.constraint(equalTo: visuallyCompleteStack.leadingAnchor, constant: 18),
+    ])
+    setVisuallyCompleteCaption(.initial)
+
     primaryButton.bezelStyle = .rounded
     primaryButton.controlSize = .large
     primaryButton.keyEquivalent = "\r"
@@ -236,12 +400,15 @@ private extension OnboardingView {
     secondaryButton.action = #selector(secondaryAction)
     secondaryButton.contentTintColor = .secondaryLabelColor
 
-    let stack = NSStackView(views: [iconContainer, titleLabel, bodyLabel, primaryButton, secondaryButton])
+    let stack = NSStackView(views: [
+      iconContainer, titleLabel, bodyLabel, visuallyCompleteStack, primaryButton, secondaryButton,
+    ])
     stack.orientation = .vertical
     stack.alignment = .centerX
     stack.spacing = 12
     stack.setCustomSpacing(8, after: iconContainer)
-    stack.setCustomSpacing(24, after: bodyLabel)
+    stack.setCustomSpacing(20, after: bodyLabel)
+    stack.setCustomSpacing(24, after: visuallyCompleteStack)
     stack.setCustomSpacing(8, after: primaryButton)
     stack.translatesAutoresizingMaskIntoConstraints = false
     addSubview(stack)
@@ -282,6 +449,14 @@ private extension OnboardingView {
     }
   }
 
+  @objc func visuallyCompleteAction() {
+    onVisuallyCompleteChanged?(isVisuallyCompleteEnabled)
+  }
+
+  @objc func relaunchAction() {
+    onRelaunch?()
+  }
+
   func apply(_ stage: Stage, animated: Bool) {
     let permission = AccessibilityPermission.displayName
     let appName = AppInfo.name
@@ -292,9 +467,10 @@ private extension OnboardingView {
       titleLabel.stringValue = "Welcome to \(appName)"
       bodyLabel.stringValue = "\(appName) needs the \(permission) permission to find the frontmost window "
         + "and pin the performance HUD to it."
-      primaryButton.title = "Grant \(permission) Access"
+      primaryButton.title = AccessibilityPermission.grantActionTitle
       secondaryButton.title = "Not Now"
       setSecondaryButtonVisible(true)
+      setVisuallyCompleteVisible(true)
 
     case .dragging:
       titleLabel.stringValue = "Drag the icon into System Settings"
@@ -302,12 +478,14 @@ private extension OnboardingView {
       primaryButton.title = "Open System Settings Again"
       secondaryButton.title = "Not Now"
       setSecondaryButtonVisible(true)
+      setVisuallyCompleteVisible(false)
 
     case .granted:
       titleLabel.stringValue = "You’re all set"
-      bodyLabel.stringValue = "\(permission) access is granted. The HUD will attach to the frontmost window."
+      bodyLabel.stringValue = "The \(permission) permission is granted. The HUD will attach to the frontmost window."
       primaryButton.title = "Done"
       setSecondaryButtonVisible(false)
+      setVisuallyCompleteVisible(true)
     }
     layoutSubtreeIfNeeded()
 
@@ -339,6 +517,20 @@ private extension OnboardingView {
   func setSecondaryButtonVisible(_ isVisible: Bool) {
     secondaryButton.alphaValue = isVisible ? 1 : 0
     secondaryButton.isEnabled = isVisible
+  }
+
+  /// Same trick for the checkbox: hidden while dragging so the instructions stand alone.
+  func setVisuallyCompleteVisible(_ isVisible: Bool) {
+    visuallyCompleteStack.alphaValue = isVisible ? 1 : 0
+    visuallyCompleteCheckbox.isEnabled = isVisible
+    relaunchButton.isEnabled = isVisible && relaunchButton.alphaValue > 0
+  }
+
+  /// The button keeps its slot so the primary button never moves; it is only shown when a relaunch
+  /// is the next step.
+  func setRelaunchButtonVisible(_ isVisible: Bool) {
+    relaunchButton.alphaValue = isVisible ? 1 : 0
+    relaunchButton.isEnabled = isVisible && visuallyCompleteStack.alphaValue > 0
   }
 
   /// Resizes the icon in place: it stays centered in its fixed container, so nothing translates.

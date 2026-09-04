@@ -6,23 +6,27 @@ struct HUDSnapshot: Equatable {
   var metrics: ProcessMetrics
   var launchDuration: TimeInterval?
   var timeToInteractiveDuration: TimeInterval?
+  var visuallyCompleteDuration: TimeInterval?
   /// Metrics to render, in display order.
   var visibleMetrics: [HUDMetric]
   var thresholds: [HUDMetric: MetricThresholds]
   var isDetached: Bool
   var followsActiveWindow: Bool
   var missingAccessibility: Bool
+  var missingScreenRecording: Bool
 
   static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.appName == rhs.appName
       && lhs.metrics == rhs.metrics
       && lhs.launchDuration == rhs.launchDuration
       && lhs.timeToInteractiveDuration == rhs.timeToInteractiveDuration
+      && lhs.visuallyCompleteDuration == rhs.visuallyCompleteDuration
       && lhs.visibleMetrics == rhs.visibleMetrics
       && lhs.thresholds == rhs.thresholds
       && lhs.isDetached == rhs.isDetached
       && lhs.followsActiveWindow == rhs.followsActiveWindow
       && lhs.missingAccessibility == rhs.missingAccessibility
+      && lhs.missingScreenRecording == rhs.missingScreenRecording
   }
 }
 
@@ -532,6 +536,14 @@ private final class HUDContentView: NSView {
       value: durationText(snapshot.timeToInteractiveDuration),
       color: color(for: snapshot.timeToInteractiveDuration, thresholds: snapshot.thresholds[.timeToInteractive])
     )
+    set(
+      .visuallyComplete,
+      value: durationText(snapshot.visuallyCompleteDuration),
+      color: color(
+        for: snapshot.visuallyCompleteDuration,
+        thresholds: snapshot.thresholds[.visuallyComplete]
+      )
+    )
 
     if case .metric = drag {
       // Don't fight the user's reordering; the new order is applied on mouse up.
@@ -777,8 +789,19 @@ private extension HUDContentView {
   }
 
   func updateWarning(snapshot: HUDSnapshot) {
-    warningLabel.stringValue = "Enable \(AccessibilityPermission.displayName) to attach to windows"
-    warningLabel.isHidden = !snapshot.missingAccessibility
+    switch (snapshot.missingAccessibility, snapshot.missingScreenRecording) {
+    case (true, true):
+      warningLabel.stringValue = "Enable \(AccessibilityPermission.displayName) and Screen Recording"
+      warningLabel.isHidden = false
+    case (true, false):
+      warningLabel.stringValue = "Enable \(AccessibilityPermission.displayName) to attach to windows"
+      warningLabel.isHidden = false
+    case (false, true):
+      warningLabel.stringValue = "Enable Screen Recording for Visually Complete"
+      warningLabel.isHidden = false
+    case (false, false):
+      warningLabel.isHidden = true
+    }
   }
 
   func updateArrangedMetrics(_ metrics: [HUDMetric]) {

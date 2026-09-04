@@ -61,7 +61,7 @@ private extension StatusItemController {
     if !AccessibilityPermission.isGranted {
       menu.addItem(.separator())
       menu.addItem(makeItem(
-        title: "Grant \(AccessibilityPermission.displayName) Access…",
+        title: "\(AccessibilityPermission.grantActionTitle)…",
         action: #selector(showOnboarding(_:))
       ))
     }

@@ -43,7 +43,7 @@ Remora is named after the fish that hitches a ride on bigger fish. It attaches a
 
 - **CPU and memory** for the app and its helper processes, not just the main process.
 - **Energy Impact and 12 hr Power,** the same numbers Activity Monitor shows, so you can compare directly.
-- **Launch Timer and Time to Interactive,** for apps started while Remora is running.
+- **Launch Timer, Time to Interactive, and experimental Visually Complete,** for apps started while Remora is running.
 - **Colour thresholds you control.** Values turn orange and red at levels you set.
 
 **Stays out of the way**
@@ -70,8 +70,9 @@ Remora needs macOS 14 or later. It checks for new versions once a day and offers
 | Permission | What it enables | When Remora asks |
 |---|---|---|
 | Accessibility | Reading the frontmost window's position and size so the HUD can follow it, and detecting the focused text field for Time to Interactive. | On first launch, through an onboarding window that opens the right System Settings pane and lets you drag the app in. |
+| Screen Recording | Capturing window frames for the optional Visually Complete experiment. | Only when Visually Complete is enabled. |
 
-Accessibility is the only permission Remora uses. On macOS 27 the pane is called "Device Control and Data Access"; it is the same permission.
+On macOS 27 the Accessibility pane is called "Device Control and Data Access"; it is the same permission.
 
 ## Configuration
 
@@ -82,13 +83,14 @@ Everything lives in a `key = value` file at `~/.config/remora/config` (or `$XDG_
 hud-position = bottom-right
 hud-detached = false
 hud-detached-position = none
-metric-order = cpu,memory,energy-impact,twelve-hour-power,launch-timer,time-to-interactive
+metric-order = cpu,memory,energy-impact,twelve-hour-power,launch-timer,time-to-interactive,visually-complete
 show-cpu = true
 show-memory = true
 show-energy-impact = true
 show-twelve-hour-power = true
 show-launch-timer = true
 show-time-to-interactive = true
+show-visually-complete = false
 cpu-orange-threshold = 40
 cpu-red-threshold = 80
 energy-impact-orange-threshold = 100
@@ -114,6 +116,7 @@ toggle-shortcut = ctrl+alt+h
 - **12 hr Power** comes from the same system statistics service Activity Monitor uses for its 12 hr Power column.
 - **Launch Timer** runs from the process launch until Remora sees the app's first normal on-screen window. Window creation times are not available retroactively, so only apps launched while Remora is running get a value.
 - **Time to Interactive** runs from launch until the first window has an enabled, keyboard-focused text field. Apps with incomplete Accessibility support may never report one.
+- **Visually Complete** starts ScreenCaptureKit after keyboard Time to Interactive, then compares rendered window pixels and reports the final meaningful change before 750 ms of visual stability. It is therefore always later than Time to Interactive. It is off by default.
 
 Energy Impact, 12 hr Power and part of the window tracking use private macOS interfaces. They are the same ones Activity Monitor relies on, but Apple can change them in any release. If a metric shows a dash after a macOS update, that is usually why.
 

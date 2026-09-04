@@ -408,6 +408,7 @@ private final class MetricsPane: NSViewController, SettingsPane {
     case .twelveHourPower: settings.showsTwelveHourPower = isOn
     case .launchTimer: settings.showsLaunchTimer = isOn
     case .timeToInteractive: settings.showsTimeToInteractive = isOn
+    case .visuallyComplete: settings.showsVisuallyComplete = isOn
     }
   }
 
@@ -428,6 +429,7 @@ private final class MetricsPane: NSViewController, SettingsPane {
     checkboxes[.twelveHourPower]?.state = settings.showsTwelveHourPower ? .on : .off
     checkboxes[.launchTimer]?.state = settings.showsLaunchTimer ? .on : .off
     checkboxes[.timeToInteractive]?.state = settings.showsTimeToInteractive ? .on : .off
+    checkboxes[.visuallyComplete]?.state = settings.showsVisuallyComplete ? .on : .off
 
     refreshIntervalPopUp.selectItem(withTag: settings.refreshInterval.rawValue)
     for metric in HUDMetric.allCases {
@@ -625,8 +627,8 @@ private final class PermissionsPane: NSViewController, SettingsPane {
   let paneSymbolName = "lock.shield"
 
   private let onShowOnboarding: () -> Void
-  // Seeded with the widest status so the row is laid out for it from the start.
-  private let accessibilityStatus = NSTextField(labelWithString: "Not granted")
+  private let accessibilityStatus = PermissionsPane.makeStatusLabel(values: ["Granted", "Not granted"])
+  private let screenRecordingStatus = PermissionsPane.makeStatusLabel(values: ["Granted", "Required", "Optional"])
   private let setUpButton = NSButton(title: "Set Up…", target: nil, action: nil)
 
   init(onShowOnboarding: @escaping () -> Void) {
@@ -643,14 +645,24 @@ private final class PermissionsPane: NSViewController, SettingsPane {
     setUpButton.target = self
     setUpButton.action = #selector(showOnboarding)
     let openAccessibility = NSButton(title: "Open System Settings…", target: self, action: #selector(openAccessibilitySettings))
+    let openScreenRecording = NSButton(
+      title: "Open System Settings…",
+      target: self,
+      action: #selector(openScreenRecordingSettings)
+    )
 
     view = SettingsForm.page([
       SettingsForm.section(title: "Permissions", rows: [
         SettingsForm.row(
           title: accessibility,
           subtitle: "Used to find the frontmost app’s main window so the HUD can attach to it, "
-            + "and to measure Time to Interactive. This is the only permission the app needs.",
+            + "and to measure Time to Interactive.",
           control: controls([accessibilityStatus, setUpButton, openAccessibility])
+        ),
+        SettingsForm.row(
+          title: "Screen Recording",
+          subtitle: "Used by Visually Complete to watch the window render after keyboard focus is detected.",
+          control: controls([screenRecordingStatus, openScreenRecording])
         ),
       ]),
     ])
@@ -686,6 +698,18 @@ private final class PermissionsPane: NSViewController, SettingsPane {
     return stack
   }
 
+  /// Sized for the widest value it can show, so the buttons beside it never move when it changes.
+  private static func makeStatusLabel(values: [String]) -> NSTextField {
+    let label = NSTextField(labelWithString: "")
+    label.alignment = .right
+    let width = values.map { value in
+      label.stringValue = value
+      return label.intrinsicContentSize.width
+    }.max() ?? 0
+    label.widthAnchor.constraint(equalToConstant: ceil(width)).isActive = true
+    return label
+  }
+
   @objc private func applicationDidBecomeActive() {
     refresh()
   }
@@ -698,11 +722,27 @@ private final class PermissionsPane: NSViewController, SettingsPane {
     AccessibilityPermission.openSystemSettings()
   }
 
+  @objc private func openScreenRecordingSettings() {
+    ScreenRecordingPermission.openSystemSettings()
+  }
+
   private func refresh() {
     let accessibilityGranted = AccessibilityPermission.isGranted
     accessibilityStatus.stringValue = accessibilityGranted ? "Granted" : "Not granted"
     accessibilityStatus.textColor = accessibilityGranted ? .systemGreen : .systemOrange
     setUpButton.isHidden = accessibilityGranted
+
+    let screenRecordingGranted = ScreenRecordingPermission.isGranted
+    if screenRecordingGranted {
+      screenRecordingStatus.stringValue = "Granted"
+      screenRecordingStatus.textColor = .systemGreen
+    } else if AppSettings.shared.showsVisuallyComplete {
+      screenRecordingStatus.stringValue = "Required"
+      screenRecordingStatus.textColor = .systemOrange
+    } else {
+      screenRecordingStatus.stringValue = "Optional"
+      screenRecordingStatus.textColor = .secondaryLabelColor
+    }
   }
 }
 
