@@ -60,7 +60,7 @@ final class HUDWindow: NSPanel {
   init() {
     super.init(
       contentRect: NSRect(x: 0, y: 0, width: 240, height: 72),
-      styleMask: [.borderless, .nonactivatingPanel],
+      styleMask: [.fullSizeContentView, .nonactivatingPanel, .borderless, .titled],
       backing: .buffered,
       defer: false
     )
@@ -156,6 +156,9 @@ private extension HUDWindow {
     ignoresMouseEvents = false
     isMovable = false
     isMovableByWindowBackground = false
+    titleVisibility = .hidden
+    titlebarAppearsTransparent = true
+    titlebarSeparatorStyle = .none
     tabbingMode = .disallowed
     collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
   }
@@ -300,9 +303,7 @@ private extension HUDWindow {
     if #available(macOS 26.0, *) {
       let glassView = NSGlassEffectView()
       glassView.style = .regular
-      glassView.cornerRadius = cornerRadius
       if #available(macOS 27.0, *) {
-        // Interactive glass adds a second inset rim on macOS 27.
         glassView.effectIsInteractive = false
       }
       return glassView

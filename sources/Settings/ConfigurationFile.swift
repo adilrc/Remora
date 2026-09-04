@@ -32,6 +32,15 @@ final class ConfigurationFile {
 
   let url: URL
 
+  /// Debug builds keep their own directory, so working on the app never touches the real configuration.
+  static let directoryName: String = {
+    #if DEBUG
+    return "remora-dev"
+    #else
+    return "remora"
+    #endif
+  }()
+
   private var lastContents: String?
 
   init(environment: [String: String] = ProcessInfo.processInfo.environment) {
@@ -43,7 +52,7 @@ final class ConfigurationFile {
         .appendingPathComponent(".config", isDirectory: true)
     }
     url = baseURL
-      .appendingPathComponent("remora", isDirectory: true)
+      .appendingPathComponent(Self.directoryName, isDirectory: true)
       .appendingPathComponent("config", isDirectory: false)
   }
 

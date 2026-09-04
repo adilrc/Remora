@@ -534,8 +534,8 @@ private extension AppSettings {
       showsMemory: true,
       showsEnergyImpact: true,
       showsTwelveHourPower: true,
-      showsLaunchTimer: false,
-      showsTimeToInteractive: false,
+      showsLaunchTimer: true,
+      showsTimeToInteractive: true,
       thresholds: Dictionary(uniqueKeysWithValues: HUDMetric.allCases.map { ($0, MetricThresholds.defaults(for: $0)) }),
       refreshInterval: .fiveSeconds,
       toggleShortcut: .defaultToggle

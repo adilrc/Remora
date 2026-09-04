@@ -89,8 +89,8 @@ show-cpu = true
 show-memory = true
 show-energy-impact = true
 show-twelve-hour-power = true
-show-launch-timer = false
-show-time-to-interactive = false
+show-launch-timer = true
+show-time-to-interactive = true
 cpu-orange-threshold = 40
 cpu-red-threshold = 80
 energy-impact-orange-threshold = 100
@@ -131,6 +131,8 @@ make open
 ```
 
 `make open` generates `Remora.xcodeproj` from `project.yml` and opens it in Xcode. `make build` does a command-line Debug build instead.
+
+Debug builds run as "Remora Dev" with their own bundle identifier and read `~/.config/remora-dev/config`, so they never disturb an installed copy's permission grant or configuration.
 
 Local builds are ad-hoc signed, so no developer account is needed. macOS ties the Accessibility grant to the code signature, which means an ad-hoc build has to be granted again after each rebuild. To sign with your own team, copy `resources/configuration/Signing.local.xcconfig.example` to `Signing.local.xcconfig` and fill in your team ID.
 
