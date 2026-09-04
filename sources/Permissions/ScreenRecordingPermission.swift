@@ -7,11 +7,6 @@ enum ScreenRecordingPermission {
     CGPreflightScreenCaptureAccess()
   }
 
-  @discardableResult
-  static func promptIfNeeded() -> Bool {
-    isGranted || CGRequestScreenCaptureAccess()
-  }
-
   static func openSystemSettings() {
     guard let url = URL(
       string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"

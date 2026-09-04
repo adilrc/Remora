@@ -115,6 +115,16 @@ final class OverlayController {
     onboardingWindow.show()
   }
 
+  /// Dock icon click: brings onboarding forward while it is on screen, so the permission flow is
+  /// never buried under Settings; otherwise opens Settings.
+  func handleReopen() {
+    if onboardingWindow.isShowing {
+      onboardingWindow.show()
+    } else {
+      settingsWindow.show()
+    }
+  }
+
   func showAbout() {
     aboutWindow.show()
   }
@@ -146,9 +156,6 @@ private extension OverlayController {
 
     case .showsVisuallyComplete:
       launchTimer.setVisuallyCompleteEnabled(settings.showsVisuallyComplete)
-      if settings.showsVisuallyComplete {
-        ScreenRecordingPermission.promptIfNeeded()
-      }
 
     case .followsActiveWindow, .excludedBundleIdentifiers:
       applyTrackingSettings()

@@ -3,8 +3,9 @@ internal import AppKit
 /// Walks the user through granting the Accessibility permission. Clicking “Grant” opens System
 /// Settings, slides this window next to it, and turns the app icon into a drag source so the app
 /// can be dropped straight into the permission list. A checkbox also offers Visually Complete;
-/// ticking it turns the metric on and runs the same flow for Screen Recording, which macOS only
-/// applies after a relaunch.
+/// ticking it turns the metric on and runs the same drag flow for Screen Recording, which macOS
+/// only applies after a relaunch. The system's own Screen Recording alert is never requested: it
+/// tends to open behind other windows.
 @MainActor
 final class OnboardingWindowController: NSObject, NSWindowDelegate {
   /// Set before relaunching for Screen Recording so the next launch reopens this window.
@@ -30,17 +31,26 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     }
     guard let window, let onboardingView else { return }
 
+    onboardingView.isVisuallyCompleteEnabled = AppSettings.shared.showsVisuallyComplete
+    refreshVisuallyCompleteCaption()
     if !window.isVisible {
       window.level = .normal
       window.center()
-      onboardingView.stage = AccessibilityPermission.isGranted ? .granted(playSound: false) : .intro
+      onboardingView.stage = baseStage
     }
-    onboardingView.isVisuallyCompleteEnabled = AppSettings.shared.showsVisuallyComplete
-    refreshVisuallyCompleteCaption()
     AppActivation.windowWillShow(window)
     window.makeKeyAndOrderFront(nil)
     startPermissionPolling()
     onVisibilityChanged?(true)
+
+    // Opened with the metric on but the permission missing, typically from Settings: go straight
+    // to the drag so the user is not left guessing what to do.
+    if !AccessibilityPermission.isGranted {
+      return
+    }
+    if AppSettings.shared.showsVisuallyComplete, !ScreenRecordingPermission.isGranted {
+      beginScreenRecordingDrag()
+    }
   }
 
   func windowWillClose(_ notification: Notification) {
@@ -58,6 +68,8 @@ private extension OnboardingWindowController {
   func makeWindow() -> NSWindow {
     let view = OnboardingView()
     view.onGrant = { [weak self] in self?.grant() }
+    view.onOpenScreenRecordingSettings = { [weak self] in self?.beginScreenRecordingDrag() }
+    view.onCancelScreenRecording = { [weak self] in self?.cancelScreenRecordingDrag() }
     view.onDone = { [weak self] in self?.window?.close() }
     view.onVisuallyCompleteChanged = { [weak self] isEnabled in
       self?.setVisuallyCompleteEnabled(isEnabled)
@@ -88,14 +100,28 @@ private extension OnboardingWindowController {
     slideNextToSystemSettings()
   }
 
-  /// Turning the metric on triggers the system prompt through the settings observer. That prompt
-  /// only ever appears once per app, so System Settings is opened as well to cover repeat attempts.
+  /// The stage to rest on when no drag is in progress.
+  var baseStage: OnboardingView.Stage {
+    AccessibilityPermission.isGranted ? .granted(playSound: false) : .intro
+  }
+
   func setVisuallyCompleteEnabled(_ isEnabled: Bool) {
     AppSettings.shared.showsVisuallyComplete = isEnabled
     refreshVisuallyCompleteCaption()
     guard isEnabled, !ScreenRecordingPermission.isGranted else { return }
+    beginScreenRecordingDrag()
+  }
+
+  /// Same routine as for Accessibility: open the pane, sit next to it, offer the icon to drag.
+  func beginScreenRecordingDrag() {
     ScreenRecordingPermission.openSystemSettings()
+    onboardingView?.stage = .draggingScreenRecording
     slideNextToSystemSettings()
+  }
+
+  /// Leaves the metric on; the caption keeps explaining what is missing and polling continues.
+  func cancelScreenRecordingDrag() {
+    onboardingView?.stage = baseStage
   }
 
   /// Matches the caption to the setting and the permission, and polls while a grant is awaited.
@@ -223,6 +249,11 @@ private extension OnboardingWindowController {
   func checkScreenRecordingPermission() {
     guard ScreenRecordingPermission.isGranted else { return }
     stopScreenRecordingPolling()
+    settingsWindowTimer?.invalidate()
+    settingsWindowTimer = nil
+    if onboardingView?.stage == .draggingScreenRecording {
+      onboardingView?.stage = baseStage
+    }
     onboardingView?.setVisuallyCompleteCaption(.grantedPendingRelaunch)
     NSSound(named: "Glass")?.play()
     reactivate()
@@ -247,6 +278,7 @@ private final class OnboardingView: NSView {
   enum Stage: Equatable {
     case intro
     case dragging
+    case draggingScreenRecording
     case granted(playSound: Bool)
   }
 
@@ -261,6 +293,8 @@ private final class OnboardingView: NSView {
   static let largeIconSize: CGFloat = 140
 
   var onGrant: (() -> Void)?
+  var onOpenScreenRecordingSettings: (() -> Void)?
+  var onCancelScreenRecording: (() -> Void)?
   var onDone: (() -> Void)?
   var onVisuallyCompleteChanged: ((Bool) -> Void)?
   var onRelaunch: (() -> Void)?
@@ -279,7 +313,7 @@ private final class OnboardingView: NSView {
       visuallyCompleteCaption.textColor = .secondaryLabelColor
       setRelaunchButtonVisible(false)
     case .waiting:
-      visuallyCompleteCaption.stringValue = "Turn on \(appName) in the Screen Recording list, "
+      visuallyCompleteCaption.stringValue = "Drop \(appName) onto the Screen Recording list, "
         + "then relaunch it."
       visuallyCompleteCaption.textColor = .secondaryLabelColor
       setRelaunchButtonVisible(true)
@@ -334,8 +368,12 @@ private extension OnboardingView {
     // The icon lives in a fixed-size container so resizing it never moves anything else.
     iconContainer.translatesAutoresizingMaskIntoConstraints = false
     // Resolved through Launch Services like Finder does: `NSApp.applicationIconImage` can come back
-    // as the generic placeholder for a bundle the system has not registered yet.
-    iconView.image = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
+    // as the generic placeholder for a bundle the system has not registered yet. That image reports
+    // a 32-point size, which would leave the enlarged icon and the drag image rasterized small and
+    // scaled up; asking for 512 points selects the large representation.
+    let icon = NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath)
+    icon.size = NSSize(width: 512, height: 512)
+    iconView.image = icon
     iconView.imageScaling = .scaleProportionallyUpOrDown
     iconView.translatesAutoresizingMaskIntoConstraints = false
     iconContainer.addSubview(iconView)
@@ -412,10 +450,16 @@ private extension OnboardingView {
     stack.setCustomSpacing(8, after: primaryButton)
     stack.translatesAutoresizingMaskIntoConstraints = false
     addSubview(stack)
+    // The window keeps one size. The tall intro and granted layouts sit at the top margin; the
+    // shorter drag stages, which leave out the Visually Complete block, centre instead of leaving
+    // a hole between the text and the buttons.
+    let centered = stack.centerYAnchor.constraint(equalTo: centerYAnchor)
+    centered.priority = .defaultHigh
     NSLayoutConstraint.activate([
       stack.centerXAnchor.constraint(equalTo: centerXAnchor),
-      stack.topAnchor.constraint(equalTo: topAnchor, constant: 40),
+      stack.topAnchor.constraint(greaterThanOrEqualTo: topAnchor, constant: 40),
       stack.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, constant: -40),
+      centered,
     ])
 
     checkmarkView.alphaValue = 0
@@ -438,6 +482,7 @@ private extension OnboardingView {
   @objc func primaryAction() {
     switch stage {
     case .intro, .dragging: onGrant?()
+    case .draggingScreenRecording: onOpenScreenRecordingSettings?()
     case .granted: onDone?()
     }
   }
@@ -445,6 +490,7 @@ private extension OnboardingView {
   @objc func secondaryAction() {
     switch stage {
     case .intro, .dragging: onDone?()
+    case .draggingScreenRecording: onCancelScreenRecording?()
     case .granted: break
     }
   }
@@ -470,7 +516,6 @@ private extension OnboardingView {
       primaryButton.title = AccessibilityPermission.grantActionTitle
       secondaryButton.title = "Not Now"
       setSecondaryButtonVisible(true)
-      setVisuallyCompleteVisible(true)
 
     case .dragging:
       titleLabel.stringValue = "Drag the icon into System Settings"
@@ -478,16 +523,39 @@ private extension OnboardingView {
       primaryButton.title = "Open System Settings Again"
       secondaryButton.title = "Not Now"
       setSecondaryButtonVisible(true)
-      setVisuallyCompleteVisible(false)
+
+    case .draggingScreenRecording:
+      titleLabel.stringValue = "Drag the icon into System Settings"
+      bodyLabel.stringValue = "Drop the \(appName) icon onto the Screen Recording list. "
+        + "Visually Complete starts measuring after a relaunch."
+      primaryButton.title = "Open System Settings Again"
+      secondaryButton.title = "Not Now"
+      setSecondaryButtonVisible(true)
 
     case .granted:
       titleLabel.stringValue = "You’re all set"
       bodyLabel.stringValue = "The \(permission) permission is granted. The HUD will attach to the frontmost window."
       primaryButton.title = "Done"
       setSecondaryButtonVisible(false)
-      setVisuallyCompleteVisible(true)
     }
     layoutSubtreeIfNeeded()
+
+    // Showing or hiding the Visually Complete block re-centres everything. That shift animates with
+    // the icon resize, except on completion, where the checkmark is the only thing that moves.
+    let isGranted = if case .granted = stage { true } else { false }
+    let showsVisuallyComplete = stage == .intro || isGranted
+    if animated, !isGranted {
+      NSAnimationContext.runAnimationGroup { context in
+        context.duration = 0.3
+        context.allowsImplicitAnimation = true
+        context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        setVisuallyCompleteVisible(showsVisuallyComplete)
+        layoutSubtreeIfNeeded()
+      }
+    } else {
+      setVisuallyCompleteVisible(showsVisuallyComplete)
+      layoutSubtreeIfNeeded()
+    }
 
     switch stage {
     case .intro:
@@ -495,7 +563,7 @@ private extension OnboardingView {
       setIconSize(96, animated: animated)
       setCheckmarkVisible(false)
 
-    case .dragging:
+    case .dragging, .draggingScreenRecording:
       iconView.alphaValue = 1
       setIconSize(Self.largeIconSize, animated: animated)
       setCheckmarkVisible(false)
@@ -519,9 +587,10 @@ private extension OnboardingView {
     secondaryButton.isEnabled = isVisible
   }
 
-  /// Same trick for the checkbox: hidden while dragging so the instructions stand alone.
+  /// Hidden while dragging so the instructions stand alone. Unlike the buttons, this block leaves
+  /// the layout entirely; the window is then resized to match.
   func setVisuallyCompleteVisible(_ isVisible: Bool) {
-    visuallyCompleteStack.alphaValue = isVisible ? 1 : 0
+    visuallyCompleteStack.isHidden = !isVisible
     visuallyCompleteCheckbox.isEnabled = isVisible
     relaunchButton.isEnabled = isVisible && relaunchButton.alphaValue > 0
   }
@@ -530,7 +599,7 @@ private extension OnboardingView {
   /// is the next step.
   func setRelaunchButtonVisible(_ isVisible: Bool) {
     relaunchButton.alphaValue = isVisible ? 1 : 0
-    relaunchButton.isEnabled = isVisible && visuallyCompleteStack.alphaValue > 0
+    relaunchButton.isEnabled = isVisible && !visuallyCompleteStack.isHidden
   }
 
   /// Resizes the icon in place: it stays centered in its fixed container, so nothing translates.
@@ -638,8 +707,14 @@ private final class DraggableAppIconView: NSImageView, NSDraggingSource {
     guard travelled >= 4 else { return }
     mouseDownLocation = nil
 
+    // Rendered at the drag frame's size on demand, so the drag image is rasterized at the screen's
+    // scale instead of at the source image's nominal size and then scaled up.
+    let dragImage = NSImage(size: bounds.size, flipped: false) { rect in
+      image.draw(in: rect)
+      return true
+    }
     let item = NSDraggingItem(pasteboardWriter: Bundle.main.bundleURL as NSURL)
-    item.setDraggingFrame(bounds, contents: image)
+    item.setDraggingFrame(bounds, contents: dragImage)
     let session = beginDraggingSession(with: [item], event: event, source: self)
     session.animatesToStartingPositionsOnCancelOrFail = true
   }

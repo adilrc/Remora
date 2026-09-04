@@ -30,7 +30,7 @@ private extension SettingsWindowController {
   func makeWindow() -> NSWindow {
     let panes: [SettingsPane] = [
       GeneralPane(settings: .shared),
-      MetricsPane(settings: .shared),
+      MetricsPane(settings: .shared, onNeedsScreenRecording: { [weak self] in self?.onShowOnboarding?() }),
       AppsPane(settings: .shared),
       PermissionsPane(onShowOnboarding: { [weak self] in self?.onShowOnboarding?() }),
       ConfigurationPane(settings: .shared),
@@ -292,7 +292,11 @@ private final class MetricsPane: NSViewController, SettingsPane {
   private var orangeFields: [HUDMetric: ThresholdField] = [:]
   private var redFields: [HUDMetric: ThresholdField] = [:]
 
-  init(settings: AppSettings) {
+  /// Called when the metric is switched on without the Screen Recording grant; onboarding takes over.
+  private let onNeedsScreenRecording: () -> Void
+
+  init(settings: AppSettings, onNeedsScreenRecording: @escaping () -> Void) {
+    self.onNeedsScreenRecording = onNeedsScreenRecording
     self.settings = settings
     super.init(nibName: nil, bundle: nil)
   }
@@ -408,7 +412,11 @@ private final class MetricsPane: NSViewController, SettingsPane {
     case .twelveHourPower: settings.showsTwelveHourPower = isOn
     case .launchTimer: settings.showsLaunchTimer = isOn
     case .timeToInteractive: settings.showsTimeToInteractive = isOn
-    case .visuallyComplete: settings.showsVisuallyComplete = isOn
+    case .visuallyComplete:
+      settings.showsVisuallyComplete = isOn
+      if isOn, !ScreenRecordingPermission.isGranted {
+        onNeedsScreenRecording()
+      }
     }
   }
 

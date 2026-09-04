@@ -42,7 +42,7 @@ extension AppDelegate: NSApplicationDelegate {
   }
 
   func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-    overlayController.showSettings()
+    overlayController.handleReopen()
     return false
   }
 }

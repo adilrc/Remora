@@ -70,7 +70,7 @@ Remora needs macOS 14 or later. It checks for new versions once a day and offers
 | Permission | What it enables | When Remora asks |
 |---|---|---|
 | Accessibility | Reading the frontmost window's position and size so the HUD can follow it, and detecting the focused text field for Time to Interactive. | On first launch, through an onboarding window that opens the right System Settings pane and lets you drag the app in. |
-| Screen Recording | Capturing window frames for the optional Visually Complete experiment. | Only when Visually Complete is enabled. |
+| Screen Recording | Capturing window frames for the optional Visually Complete experiment. | Only when you enable Visually Complete, through the same drag-and-drop onboarding. A relaunch is needed afterwards. |
 
 On macOS 27 the Accessibility pane is called "Device Control and Data Access"; it is the same permission.
 
