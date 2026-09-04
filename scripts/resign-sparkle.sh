@@ -19,8 +19,17 @@ SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
 [[ -d "$SPARKLE" ]] || { echo "no Sparkle.framework inside $APP" >&2; exit 1; }
 VERSIONED="$SPARKLE/Versions/B"
 
+# Apple's timestamp service occasionally fails to answer; a retry is cheaper than a failed release.
 sign() {
-  codesign --force --sign "$IDENTITY" --options runtime --timestamp --preserve-metadata=entitlements "$@"
+  local attempt
+  for attempt in 1 2 3; do
+    if codesign --force --sign "$IDENTITY" --options runtime --timestamp --preserve-metadata=entitlements "$@"; then
+      return 0
+    fi
+    echo "codesign failed for $1 (attempt $attempt of 3), retrying" >&2
+    sleep 5
+  done
+  return 1
 }
 
 # Innermost first: the XPC services keep their sandbox entitlements, then the helpers, then the
