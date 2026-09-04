@@ -67,6 +67,9 @@ xcodebuild archive \
 
 test -d "$APP" || { echo "archive did not produce $APP" >&2; exit 1; }
 
+echo "==> Re-signing Sparkle helpers"
+"$ROOT/scripts/resign-sparkle.sh" "$APP" "$DEVELOPMENT_TEAM"
+
 echo "==> Verifying signature"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
