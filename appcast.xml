@@ -3,6 +3,15 @@
     <channel>
         <title>Remora</title>
         <item>
+            <title>0.3.2</title>
+            <pubDate>Fri, 04 Sep 2026 20:58:23 +0200</pubDate>
+            <link>https://github.com/adilrc/Remora/releases/tag/v0.3.2</link>
+            <sparkle:version>12</sparkle:version>
+            <sparkle:shortVersionString>0.3.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/adilrc/Remora/releases/download/v0.3.2/Remora-0.3.2.zip" length="3646165" type="application/octet-stream" sparkle:edSignature="nuvK3CmYuSkNhGy3QIJq0DCPgQSmdG4fbfpXRPVG3bsQ10PXf+WAUSbPOqF3GOAyjoMrZTrTH0pNpx559jO3Aw=="/>
+        </item>
+        <item>
             <title>0.3.1</title>
             <pubDate>Fri, 04 Sep 2026 20:39:24 +0200</pubDate>
             <link>https://github.com/adilrc/Remora/releases/tag/v0.3.1</link>
@@ -19,15 +28,6 @@
             <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/adilrc/Remora/releases/download/v0.3.0/Remora-0.3.0.zip" length="3566978" type="application/octet-stream" sparkle:edSignature="qa8PjNRO0X5jb4rhmH19yUt1rv3XX92Urb6PuBH00fV+CPhrS5YVQRBrQGPomIgP3frTy19Af6VEVStdNV4MDw=="/>
-        </item>
-        <item>
-            <title>0.2.0</title>
-            <pubDate>Fri, 04 Sep 2026 10:52:15 +0200</pubDate>
-            <link>https://github.com/adilrc/Remora/releases/tag/v0.2.0</link>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/adilrc/Remora/releases/download/v0.2.0/Remora-0.2.0.zip" length="3566898" type="application/octet-stream" sparkle:edSignature="EXQRHPHoqszyZ6yIo9aW3YRP4RrX347riMnUxKzLMzuvboqqAps8RKBUjE7R6PfISzjJYh/trFbW4uHyydQTAw=="/>
         </item>
     </channel>
 </rss>
