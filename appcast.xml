@@ -3,6 +3,15 @@
     <channel>
         <title>Remora</title>
         <item>
+            <title>0.2.0</title>
+            <pubDate>Fri, 04 Sep 2026 10:52:15 +0200</pubDate>
+            <link>https://github.com/adilrc/Remora/releases/tag/v0.2.0</link>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/adilrc/Remora/releases/download/v0.2.0/Remora-0.2.0.zip" length="3566898" type="application/octet-stream" sparkle:edSignature="EXQRHPHoqszyZ6yIo9aW3YRP4RrX347riMnUxKzLMzuvboqqAps8RKBUjE7R6PfISzjJYh/trFbW4uHyydQTAw=="/>
+        </item>
+        <item>
             <title>0.1.0</title>
             <pubDate>Fri, 04 Sep 2026 10:31:37 +0200</pubDate>
             <link>https://github.com/adilrc/Remora/releases/tag/v0.1.0</link>
