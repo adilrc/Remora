@@ -25,11 +25,9 @@
   <a href="LICENSE"><img src="https://img.shields.io/github/license/adilrc/Remora" alt="MIT license"></a>
 </p>
 
-<!-- TODO: record .github/assets/hero.gif (the HUD following a window and snapping between anchors), then uncomment:
 <p align="center">
   <img src=".github/assets/hero.gif" width="720" alt="Remora attached to the corner of a window, showing CPU, memory and energy for that app">
 </p>
--->
 
 Remora is named after the fish that hitches a ride on bigger fish. It attaches a tiny glass HUD to the corner of the frontmost window and shows what that app is costing you right now: CPU, memory, Activity Monitor's Energy Impact and 12 hr Power, and how long the app took to launch. When you switch apps, the HUD follows.
 
