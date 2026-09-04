@@ -1,0 +1,5 @@
+// Copy this file to Signing.local.xcconfig (gitignored) to sign builds with your
+// own Apple Development certificate instead of the default ad-hoc signature.
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+DEVELOPMENT_TEAM = YOUR_TEAM_ID

@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in Remora is broken or behaves unexpectedly.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 26.1 (25B77)"
+    validations:
+      required: true
+  - type: input
+    id: remora
+    attributes:
+      label: Remora version
+      description: Shown in the About window (menu bar icon, then About Remora), or in Finder via Get Info on Remora.app.
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host application
+      description: The app whose window the HUD was attached to when the problem occurred, if relevant.
+      placeholder: "e.g. Safari 26.1, Ghostty 1.3"
+  - type: dropdown
+    id: permission
+    attributes:
+      label: Accessibility permission
+      options:
+        - Granted
+        - Not granted
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration file
+      description: Paste `~/.config/remora/config` if the problem might depend on your settings.
+      render: ini
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Console output filtered by subsystem `com.remora.app`, or a screenshot of the HUD.

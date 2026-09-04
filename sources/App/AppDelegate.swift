@@ -1,0 +1,44 @@
+internal import AppKit
+
+@MainActor
+final class AppDelegate: NSObject {
+  private let overlayController = OverlayController()
+  private var statusItemController: StatusItemController?
+}
+
+extension AppDelegate: NSApplicationDelegate {
+  func applicationWillFinishLaunching(_ notification: Notification) {
+    // Shown whenever a window makes the app regular (Dock icon visible).
+    NSApp.mainMenu = MainMenu.make(
+      showAbout: { [weak self] in self?.overlayController.showAbout() },
+      showSettings: { [weak self] in self?.overlayController.showSettings() }
+    )
+  }
+
+  func applicationDidFinishLaunching(_ notification: Notification) {
+    // Metric order briefly lived in UserDefaults before moving to the configuration file.
+    UserDefaults.standard.removeObject(forKey: "hud.metricOrder")
+
+    let statusItem = StatusItemController(overlay: overlayController)
+    statusItemController = statusItem
+    statusItem.start()
+    overlayController.start()
+
+    // `-ShowOnboarding YES` forces the onboarding window, which is handy while working on it.
+    if !AccessibilityPermission.isGranted || UserDefaults.standard.bool(forKey: "ShowOnboarding") {
+      overlayController.showOnboarding()
+    } else if !UserDefaults.standard.bool(forKey: "didOpenSettingsOnce") {
+      UserDefaults.standard.set(true, forKey: "didOpenSettingsOnce")
+      overlayController.showSettings()
+    }
+  }
+
+  func applicationWillTerminate(_ notification: Notification) {
+    overlayController.stop()
+  }
+
+  func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+    overlayController.showSettings()
+    return false
+  }
+}

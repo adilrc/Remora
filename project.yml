@@ -1,0 +1,70 @@
+# XcodeGen project file
+# Repository: https://github.com/yonaskolb/XcodeGen
+# Spec: https://github.com/yonaskolb/XcodeGen/blob/master/Docs/ProjectSpec.md
+
+name: Remora
+
+attributes:
+  ORGANIZATIONNAME: Remora
+
+options:
+  minimumXcodeGenVersion: "2.44.1"
+  xcodeVersion: "27.0"
+  deploymentTarget:
+    macOS: "14.0"
+  usesTabs: false
+  indentWidth: 2
+  tabWidth: 2
+  defaultConfig: Debug
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+configs:
+  Debug: debug
+  Release: release
+
+# Project-level settings Xcode checks in “Update to recommended settings”; the target inherits
+# the same values from the xcconfig files.
+settings:
+  base:
+    DEAD_CODE_STRIPPING: YES
+    STRING_CATALOG_GENERATE_SYMBOLS: YES
+
+targets:
+  Remora:
+    platform: macOS
+    type: application
+    configFiles:
+      Debug: resources/configuration/App-Debug.xcconfig
+      Release: resources/configuration/App-Release.xcconfig
+    sources:
+      - path: sources
+      - path: resources/Assets.xcassets
+      - path: resources/Remora.icon
+        buildPhase: resources
+      - path: resources/Remora-Dev.icon
+        buildPhase: resources
+      - path: resources
+        buildPhase: none
+        excludes:
+          - Assets.xcassets
+          - "*.icon"
+    settings:
+      base:
+        INFOPLIST_FILE: resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: resources/Remora.entitlements
+        SWIFT_OBJC_BRIDGING_HEADER: sources/Metrics/BridgingHeader.h
+
+schemes:
+  Remora:
+    build:
+      targets:
+        Remora: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

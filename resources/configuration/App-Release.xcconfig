@@ -1,0 +1,4 @@
+#include "Build-Release.xcconfig"
+
+// Icon Composer bundle used for this configuration.
+ASSETCATALOG_COMPILER_APPICON_NAME = Remora

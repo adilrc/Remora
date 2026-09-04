@@ -1,0 +1,50 @@
+# Xcode
+/build/
+/DerivedData/
+/.derivedData/
+/*.xcodeproj/
+/archive/
+
+# Swift Package Manager
+Package.pins
+Package.resolved
+.build/
+.swiftpm/
+
+# User data
+.DS_Store
+xcuserdata/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+# Obj-C/Swift
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# sourcekit-lsp
+/Package.swift
+
+# SweetPad (VSCode / Cursor)
+buildServer.json
+
+# Local signing override (DEVELOPMENT_TEAM)
+resources/configuration/Signing.local.xcconfig
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+timeline.xctimeline
+playground.xcworkspace
+
+# Local build output
+/.derivedData*/
+
+# Release artifacts
+/dist/

@@ -1,0 +1,10 @@
+#include "Build-Debug.xcconfig"
+
+// Icon Composer bundle used for this configuration.
+ASSETCATALOG_COMPILER_APPICON_NAME = Remora-Dev
+
+// A distinct identity so a Debug build never shares the Accessibility grant with the installed
+// release app: TCC keys the grant on bundle ID plus code signature, and two builds with the same
+// ID overwrite each other's entry while System Settings still shows it as enabled.
+PRODUCT_BUNDLE_IDENTIFIER = com.remora.app.debug
+REMORA_DISPLAY_NAME = Remora Dev

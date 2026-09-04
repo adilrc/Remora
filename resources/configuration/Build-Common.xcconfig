@@ -1,0 +1,64 @@
+// Xcode build settings shared by Debug and Release.
+
+// ---------- Architecture ----------
+SUPPORTED_PLATFORMS = macosx
+MACOSX_DEPLOYMENT_TARGET = 14.0
+TARGETED_DEVICE_FAMILY = 6
+
+// ---------- Packaging ----------
+PRODUCT_NAME = Remora
+PRODUCT_BUNDLE_IDENTIFIER = com.remora.app
+PRODUCT_MODULE_NAME = Remora
+// Shown in the menu bar menu, onboarding and System Settings' permission list.
+REMORA_DISPLAY_NAME = Remora
+COMBINE_HIDPI_IMAGES = YES
+COPY_PHASE_STRIP = NO
+
+// ---------- Versioning ----------
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+
+// ---------- Info.plist ----------
+GENERATE_INFOPLIST_FILE = NO
+INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.utilities
+
+// ---------- Linking ----------
+DEAD_CODE_STRIPPING = YES
+
+// ---------- Localization ----------
+STRING_CATALOG_GENERATE_SYMBOLS = YES
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
+OTHER_LDFLAGS = $(inherited) -framework IOKit
+
+// ---------- Search paths ----------
+ALWAYS_SEARCH_USER_PATHS = NO
+
+// ---------- Apple Clang ----------
+GCC_C_LANGUAGE_STANDARD = gnu17
+CLANG_CXX_LANGUAGE_STANDARD = gnu++20
+CLANG_ENABLE_MODULES = YES
+CLANG_ENABLE_OBJC_ARC = YES
+CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES
+CLANG_WARN_DOCUMENTATION_COMMENTS = YES
+GCC_TREAT_WARNINGS_AS_ERRORS = YES
+
+// ---------- Swift compiler ----------
+SWIFT_VERSION = 6
+SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES
+SWIFT_EXPERIMENTAL_FEATURE_ACCESS_LEVEL_ON_IMPORT = YES
+SWIFT_STRICT_CONCURRENCY = complete
+SWIFT_TREAT_WARNINGS_AS_ERRORS = YES
+SWIFT_EMIT_LOC_STRINGS = NO
+
+// ---------- Signing ----------
+// Ad-hoc by default so the project builds on any machine without an Apple
+// developer account. To sign with your own team, copy
+// Signing.local.xcconfig.example to Signing.local.xcconfig (gitignored) and fill
+// in your team ID; it is included last so its values win.
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = -
+DEVELOPMENT_TEAM =
+ENABLE_HARDENED_RUNTIME = YES
+ENABLE_USER_SCRIPT_SANDBOXING = YES
+
+#include? "Signing.local.xcconfig"
